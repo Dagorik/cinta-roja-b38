@@ -1,4 +1,5 @@
 const express = require('express');
+const { User } = require('./models');
 
 const app = express();
 
@@ -14,13 +15,13 @@ app.get('/', (request, response) => {
 
 // http://localhost:3000/users
 app.get('/users', (req,res) => {
-    const users = [
-        {id:1, name: 'User 1'},
-        {id:2, name: 'User 2'},
-        {id:3, name: 'User 3'},
-        {id:4, name: 'User 4'},
-    ]
-    res.send(users);
+    User.find().exec()
+        .then((users) => {
+            res.send(users);
+        })
+        .catch((err) => {
+            res.status(409).send(err);
+        })
 });
 
 // PARAMS
@@ -28,12 +29,13 @@ app.get('/users', (req,res) => {
 app.get('/user/:idUser', (req, res) => {
     console.log(req.params);
     const idUser = req.params.idUser;
-    if (idUser === '3') {
-        const user = {id:3, name: 'User 3'}
-        res.send(user);
-    } else {
-        res.status(404).send({ message: 'NO ENCONTRADO' })
-    }
+    User.findOne({ _id: idUser }).exec()
+        .then((user) => {
+            if (user) res.send(user);
+            else res.status(404).send({mensaje: 'USUARIO NO ENCONTRADO'})
+        }).catch((err) => {
+            res.status(409).send(err);
+        });
 });
 
 // QUERYS
@@ -47,7 +49,29 @@ app.get('/search', (req, res) => {
 // http://localhost:3000/user
 app.post('/user', (req, res) => {
     console.log(req.body);
-    res.send({ mensajito: 'EL POST' });
+
+    const newUser = User({
+        nombre: req.body.nombre,
+        apellidos: req.body.apellidos,
+        telefono: req.body.phone,
+        genero: req.body.genero
+    })
+
+    newUser.save((err, user) => {
+        if (err) res.status(400).send(err)
+        else res.status(201).send(user);
+    });
+});
+
+app.patch('/user/:idUser', (req, res) => {
+    const idUser = req.params.idUser;
+
+    User.findOneAndUpdate({ _id: idUser }, req.body, { new: true }).exec()
+        .then((userUpdated) => {
+            res.send(userUpdated);
+        }).catch((err) => {
+            res.status(409).send(err);
+        });
 });
 
 app.listen(3000, () => {
